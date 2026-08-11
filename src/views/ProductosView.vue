@@ -10,6 +10,7 @@ const errorMsg = ref('')
 const form = ref({ nombre: '', descripcion: '', categoria: '', precio: null })
 const editingId = ref(null)
 const categoriaFiltro = ref('')
+const busqueda = ref('')
 
 const categoriasDisponibles = computed(() => {
   const set = new Set(productos.value.map((p) => p.categoria).filter(Boolean))
@@ -17,8 +18,21 @@ const categoriasDisponibles = computed(() => {
 })
 
 const productosFiltrados = computed(() => {
-  if (!categoriaFiltro.value) return productos.value
-  return productos.value.filter((p) => p.categoria === categoriaFiltro.value)
+  let resultado = productos.value
+
+  if (categoriaFiltro.value) {
+    resultado = resultado.filter((p) => p.categoria === categoriaFiltro.value)
+  }
+
+  const termino = busqueda.value.trim().toLowerCase()
+  if (termino) {
+    resultado = resultado.filter((p) =>
+      p.nombre?.toLowerCase().includes(termino) ||
+      p.descripcion?.toLowerCase().includes(termino)
+    )
+  }
+
+  return resultado
 })
 
 async function cargarProductos() {
@@ -100,11 +114,20 @@ onMounted(cargarProductos)
 
     <div class="card">
       <div class="form-row" style="margin-bottom: 12px;">
+        <input
+          v-model="busqueda"
+          type="text"
+          placeholder="Buscar por nombre o descripción..."
+          style="flex: 1; min-width: 220px;"
+        />
         <label style="align-self: center; font-size: 14px; color: var(--ink-muted);">Filtrar por categoría</label>
         <select v-model="categoriaFiltro">
           <option value="">Todas</option>
           <option v-for="cat in categoriasDisponibles" :key="cat" :value="cat">{{ cat }}</option>
         </select>
+        <span style="align-self: center; font-size: 13px; color: var(--ink-muted);">
+          {{ productosFiltrados.length }} de {{ productos.length }} productos
+        </span>
       </div>
 
       <p v-if="loading">Cargando...</p>
@@ -130,7 +153,7 @@ onMounted(cargarProductos)
             </td>
           </tr>
           <tr v-if="productosFiltrados.length === 0">
-            <td colspan="5" style="text-align: center; color: var(--ink-muted);">No hay productos en esta categoría.</td>
+            <td colspan="5" style="text-align: center; color: var(--ink-muted);">No hay productos que coincidan con la búsqueda.</td>
           </tr>
         </tbody>
       </table>

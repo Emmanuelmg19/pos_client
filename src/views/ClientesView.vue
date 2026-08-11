@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { clienteRepository } from '../repositories/clienteRepository'
 import AppLayout from '../layouts/AppLayout.vue'
 
@@ -9,6 +9,17 @@ const errorMsg = ref('')
 
 const form = ref({ nombre: '', telefono: '', email: '' })
 const editingId = ref(null)
+const busqueda = ref('')
+
+const clientesFiltrados = computed(() => {
+  const termino = busqueda.value.trim().toLowerCase()
+  if (!termino) return clientes.value
+  return clientes.value.filter((c) =>
+    c.nombre?.toLowerCase().includes(termino) ||
+    c.telefono?.toLowerCase().includes(termino) ||
+    c.email?.toLowerCase().includes(termino)
+  )
+})
 
 async function cargarClientes() {
   loading.value = true
@@ -86,6 +97,18 @@ onMounted(cargarClientes)
     </div>
 
     <div class="card">
+      <div class="form-row" style="margin-bottom: 12px;">
+        <input
+          v-model="busqueda"
+          type="text"
+          placeholder="Buscar por nombre, teléfono o correo..."
+          style="flex: 1; min-width: 220px;"
+        />
+        <span style="align-self: center; font-size: 13px; color: var(--ink-muted);">
+          {{ clientesFiltrados.length }} de {{ clientes.length }} clientes
+        </span>
+      </div>
+
       <p v-if="loading">Cargando...</p>
       <table v-else>
         <thead>
@@ -97,7 +120,7 @@ onMounted(cargarClientes)
           </tr>
         </thead>
         <tbody>
-          <tr v-for="c in clientes" :key="c.id">
+          <tr v-for="c in clientesFiltrados" :key="c.id">
             <td>{{ c.nombre }}</td>
             <td>{{ c.telefono || '—' }}</td>
             <td>{{ c.email || '—' }}</td>
@@ -105,6 +128,9 @@ onMounted(cargarClientes)
               <button class="btn" @click="editar(c)">Editar</button>
               <button class="btn" @click="eliminar(c.id)">Eliminar</button>
             </td>
+          </tr>
+          <tr v-if="clientesFiltrados.length === 0">
+            <td colspan="4" style="text-align: center; color: var(--ink-muted);">No hay clientes que coincidan con la búsqueda.</td>
           </tr>
         </tbody>
       </table>

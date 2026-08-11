@@ -18,6 +18,7 @@ const clienteSeleccionado = ref('')
 const carrito = ref([])
 const productoParaAgregar = ref('')
 const cantidadParaAgregar = ref(1)
+const busqueda = ref('')
 
 const stockPorProducto = computed(() => {
   const mapa = {}
@@ -34,6 +35,16 @@ const nombrePorProductoId = computed(() => {
 const totalCarrito = computed(() =>
   carrito.value.reduce((acc, item) => acc + item.cantidad * item.precio_unitario, 0)
 )
+
+const ventasFiltradas = computed(() => {
+  const termino = busqueda.value.trim().toLowerCase()
+  if (!termino) return ventas.value
+  return ventas.value.filter((v) => {
+    const cliente = nombreCliente(v.cliente).toLowerCase()
+    const productosTexto = resumenProductos(v).toLowerCase()
+    return cliente.includes(termino) || productosTexto.includes(termino)
+  })
+})
 
 async function cargarTodo() {
   loading.value = true
@@ -203,6 +214,18 @@ onMounted(cargarTodo)
 
     <div class="card">
       <h2>Historial de ventas</h2>
+      <div class="form-row" style="margin-bottom: 12px;">
+        <input
+          v-model="busqueda"
+          type="text"
+          placeholder="Buscar por cliente o producto..."
+          style="flex: 1; min-width: 220px;"
+        />
+        <span style="align-self: center; font-size: 13px; color: var(--ink-muted);">
+          {{ ventasFiltradas.length }} de {{ ventas.length }} ventas
+        </span>
+      </div>
+
       <p v-if="loading">Cargando...</p>
       <table v-else>
         <thead>
@@ -216,13 +239,16 @@ onMounted(cargarTodo)
           </tr>
         </thead>
         <tbody>
-          <tr v-for="v in ventas" :key="v.id">
+          <tr v-for="v in ventasFiltradas" :key="v.id">
             <td>{{ v.fecha }}</td>
             <td>{{ nombreCliente(v.cliente) }}</td>
             <td>{{ resumenProductos(v) }}</td>
             <td>{{ totalUnidades(v) }}</td>
             <td>${{ v.total }}</td>
             <td><button type="button" class="btn" @click="cancelarVenta(v.id)">Cancelar</button></td>
+          </tr>
+          <tr v-if="ventasFiltradas.length === 0">
+            <td colspan="6" style="text-align: center; color: var(--ink-muted);">No hay ventas que coincidan con la búsqueda.</td>
           </tr>
         </tbody>
       </table>

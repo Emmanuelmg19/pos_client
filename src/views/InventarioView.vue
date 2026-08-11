@@ -12,11 +12,22 @@ const errorMsg = ref('')
 const form = ref({ producto_id: '', cantidad_disponible: null, ubicacion: '' })
 const editingId = ref(null)
 const ajusteCantidad = ref({})
+const busqueda = ref('')
 
 const productoNombrePorId = computed(() => {
   const mapa = {}
   for (const p of productos.value) mapa[p._id] = p.nombre
   return mapa
+})
+
+const inventarioFiltrado = computed(() => {
+  const termino = busqueda.value.trim().toLowerCase()
+  if (!termino) return inventario.value
+  return inventario.value.filter((item) => {
+    const nombre = (productoNombrePorId.value[item.producto_id] || item.producto_id || '').toLowerCase()
+    const ubicacion = (item.ubicacion || '').toLowerCase()
+    return nombre.includes(termino) || ubicacion.includes(termino)
+  })
 })
 
 async function cargarTodo() {
@@ -113,6 +124,18 @@ onMounted(cargarTodo)
     </div>
 
     <div class="card">
+      <div class="form-row" style="margin-bottom: 12px;">
+        <input
+          v-model="busqueda"
+          type="text"
+          placeholder="Buscar por producto o ubicación..."
+          style="flex: 1; min-width: 220px;"
+        />
+        <span style="align-self: center; font-size: 13px; color: var(--ink-muted);">
+          {{ inventarioFiltrado.length }} de {{ inventario.length }} registros
+        </span>
+      </div>
+
       <p v-if="loading">Cargando...</p>
       <table v-else>
         <thead>
@@ -125,7 +148,7 @@ onMounted(cargarTodo)
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in inventario" :key="item.id">
+          <tr v-for="item in inventarioFiltrado" :key="item.id">
             <td>{{ productoNombrePorId[item.producto_id] || item.producto_id }}</td>
             <td>{{ item.cantidad_disponible }}</td>
             <td>{{ item.ubicacion || '—' }}</td>
@@ -137,6 +160,9 @@ onMounted(cargarTodo)
               <button class="btn" @click="editar(item)">Editar</button>
               <button class="btn" @click="eliminar(item.id)">Eliminar</button>
             </td>
+          </tr>
+          <tr v-if="inventarioFiltrado.length === 0">
+            <td colspan="5" style="text-align: center; color: var(--ink-muted);">No hay registros que coincidan con la búsqueda.</td>
           </tr>
         </tbody>
       </table>
