@@ -18,6 +18,7 @@ async function handleLogout() {
     <router-link to="/productos">Ver Productos</router-link>
     <router-link to="/inventario">Ver Inventario</router-link>
     <router-link to="/clientes">Ver Clientes</router-link>
+    <router-link to="/ventas">Ver Ventas</router-link>
     <button @click="handleLogout">Cerrar sesión</button>
   </div>
 </template>
