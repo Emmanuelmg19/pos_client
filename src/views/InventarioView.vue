@@ -2,27 +2,20 @@
 import { ref, onMounted, computed } from 'vue'
 import { inventarioRepository } from '../repositories/inventarioRepository'
 import { productoRepository } from '../repositories/productoRepository'
+import AppLayout from '../layouts/AppLayout.vue'
 
 const inventario = ref([])
 const productos = ref([])
 const loading = ref(false)
 const errorMsg = ref('')
 
-const form = ref({
-  producto_id: '',
-  cantidad_disponible: null,
-  ubicacion: '',
-})
+const form = ref({ producto_id: '', cantidad_disponible: null, ubicacion: '' })
 const editingId = ref(null)
+const ajusteCantidad = ref({})
 
-const ajusteCantidad = ref({}) // { [inventarioId]: number }
-
-// Mapa producto_id -> nombre, para mostrar algo legible en vez del ObjectId crudo
 const productoNombrePorId = computed(() => {
   const mapa = {}
-  for (const p of productos.value) {
-    mapa[p._id] = p.nombre
-  }
+  for (const p of productos.value) mapa[p._id] = p.nombre
   return mapa
 })
 
@@ -30,10 +23,7 @@ async function cargarTodo() {
   loading.value = true
   errorMsg.value = ''
   try {
-    const [inv, prods] = await Promise.all([
-      inventarioRepository.getAll(),
-      productoRepository.getAll(),
-    ])
+    const [inv, prods] = await Promise.all([inventarioRepository.getAll(), productoRepository.getAll()])
     inventario.value = inv
     productos.value = prods
   } catch (err) {
@@ -101,52 +91,55 @@ onMounted(cargarTodo)
 </script>
 
 <template>
-  <div style="font-family: sans-serif; padding: 24px; max-width: 900px; margin: 0 auto;">
-    <h1>Inventario</h1>
-    <p v-if="errorMsg" style="color: red;">{{ errorMsg }}</p>
+  <AppLayout>
+    <div class="page-header">
+      <h1>Inventario</h1>
+      <p style="color: var(--ink-muted);">Stock por producto — Backend Laravel / PostgreSQL</p>
+    </div>
+    <p v-if="errorMsg" class="alert alert-danger">{{ errorMsg }}</p>
 
-    <form @submit.prevent="guardar" style="margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap;">
-      <select v-model="form.producto_id" required>
-        <option value="" disabled>Selecciona un producto</option>
-        <option v-for="p in productos" :key="p._id" :value="p._id">{{ p.nombre }}</option>
-      </select>
-      <input v-model.number="form.cantidad_disponible" type="number" min="0" placeholder="Cantidad" required />
-      <input v-model="form.ubicacion" placeholder="Ubicación (opcional)" />
-      <button type="submit">{{ editingId ? 'Actualizar' : 'Crear' }}</button>
-      <button v-if="editingId" type="button" @click="resetForm">Cancelar</button>
-    </form>
+    <div class="card">
+      <h2>{{ editingId ? 'Editar registro' : 'Nuevo registro' }}</h2>
+      <form @submit.prevent="guardar" class="form-row">
+        <select v-model="form.producto_id" required>
+          <option value="" disabled>Selecciona un producto</option>
+          <option v-for="p in productos" :key="p._id" :value="p._id">{{ p.nombre }}</option>
+        </select>
+        <input v-model.number="form.cantidad_disponible" type="number" min="0" placeholder="Cantidad" required />
+        <input v-model="form.ubicacion" placeholder="Ubicación (opcional)" />
+        <button type="submit" class="btn btn-primary">{{ editingId ? 'Actualizar' : 'Crear' }}</button>
+        <button v-if="editingId" type="button" class="btn" @click="resetForm">Cancelar</button>
+      </form>
+    </div>
 
-    <p v-if="loading">Cargando...</p>
-    <table v-else border="1" cellpadding="8" style="width: 100%; border-collapse: collapse;">
-      <thead>
-        <tr>
-          <th>Producto</th>
-          <th>Stock disponible</th>
-          <th>Ubicación</th>
-          <th>Ajustar stock</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in inventario" :key="item.id">
-          <td>{{ productoNombrePorId[item.producto_id] || item.producto_id }}</td>
-          <td>{{ item.cantidad_disponible }}</td>
-          <td>{{ item.ubicacion || '—' }}</td>
-          <td>
-            <input
-              v-model="ajusteCantidad[item.id]"
-              type="number"
-              placeholder="+5 / -3"
-              style="width: 70px;"
-            />
-            <button @click="ajustar(item.id)">Aplicar</button>
-          </td>
-          <td>
-            <button @click="editar(item)">Editar</button>
-            <button @click="eliminar(item.id)">Eliminar</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <div class="card">
+      <p v-if="loading">Cargando...</p>
+      <table v-else>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Stock disponible</th>
+            <th>Ubicación</th>
+            <th>Ajustar stock</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in inventario" :key="item.id">
+            <td>{{ productoNombrePorId[item.producto_id] || item.producto_id }}</td>
+            <td>{{ item.cantidad_disponible }}</td>
+            <td>{{ item.ubicacion || '—' }}</td>
+            <td>
+              <input v-model="ajusteCantidad[item.id]" type="number" placeholder="+5 / -3" style="width: 70px;" />
+              <button class="btn" @click="ajustar(item.id)">Aplicar</button>
+            </td>
+            <td>
+              <button class="btn" @click="editar(item)">Editar</button>
+              <button class="btn" @click="eliminar(item.id)">Eliminar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </AppLayout>
 </template>

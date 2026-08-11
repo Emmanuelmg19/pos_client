@@ -27,44 +27,20 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="login-container">
-    <h1>POS AOS — Iniciar sesión</h1>
-    <form @submit.prevent="handleLogin">
-      <div>
+  <div class="login-page">
+    <div class="login-card">
+      <h1>POS · AOS</h1>
+      <p style="color: var(--ink-muted); font-size: 13px; margin: 0 0 24px;">Iniciar sesión</p>
+      <form @submit.prevent="handleLogin">
         <label>Correo</label>
         <input v-model="email" type="email" required />
-      </div>
-      <div>
         <label>Contraseña</label>
         <input v-model="password" type="password" required />
-      </div>
-      <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
-      <button type="submit" :disabled="loading">
-        {{ loading ? 'Ingresando...' : 'Ingresar' }}
-      </button>
-    </form>
+        <p v-if="errorMsg" class="alert alert-danger">{{ errorMsg }}</p>
+        <button type="submit" class="btn btn-primary" style="width: 100%;" :disabled="loading">
+          {{ loading ? 'Ingresando...' : 'Ingresar' }}
+        </button>
+      </form>
+    </div>
   </div>
 </template>
-
-<style scoped>
-.login-container {
-  max-width: 320px;
-  margin: 80px auto;
-  font-family: sans-serif;
-}
-form div {
-  margin-bottom: 12px;
-}
-input {
-  width: 100%;
-  padding: 8px;
-  box-sizing: border-box;
-}
-.error {
-  color: red;
-}
-button {
-  width: 100%;
-  padding: 10px;
-}
-</style>

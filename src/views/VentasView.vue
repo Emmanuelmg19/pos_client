@@ -4,6 +4,7 @@ import { ventaRepository } from '../repositories/ventaRepository'
 import { clienteRepository } from '../repositories/clienteRepository'
 import { productoRepository } from '../repositories/productoRepository'
 import { inventarioRepository } from '../repositories/inventarioRepository'
+import AppLayout from '../layouts/AppLayout.vue'
 
 const ventas = ref([])
 const clientes = ref([])
@@ -14,24 +15,19 @@ const errorMsg = ref('')
 const successMsg = ref('')
 
 const clienteSeleccionado = ref('')
-const carrito = ref([]) // [{ producto_id, nombre, cantidad, precio_unitario }]
-
+const carrito = ref([])
 const productoParaAgregar = ref('')
 const cantidadParaAgregar = ref(1)
 
 const stockPorProducto = computed(() => {
   const mapa = {}
-  for (const inv of inventario.value) {
-    mapa[inv.producto_id] = inv.cantidad_disponible
-  }
+  for (const inv of inventario.value) mapa[inv.producto_id] = inv.cantidad_disponible
   return mapa
 })
 
 const nombrePorProductoId = computed(() => {
   const mapa = {}
-  for (const p of productos.value) {
-    mapa[p._id] = p.nombre
-  }
+  for (const p of productos.value) mapa[p._id] = p.nombre
   return mapa
 })
 
@@ -65,7 +61,6 @@ function agregarAlCarrito() {
   if (!productoParaAgregar.value || cantidadParaAgregar.value < 1) return
   const producto = productos.value.find((p) => p._id === productoParaAgregar.value)
   if (!producto) return
-
   const existente = carrito.value.find((item) => item.producto_id === producto._id)
   if (existente) {
     existente.cantidad += cantidadParaAgregar.value
@@ -106,9 +101,6 @@ async function confirmarVenta() {
     clienteSeleccionado.value = ''
     await cargarTodo()
   } catch (err) {
-    // El backend responde 422 con StockInsuficienteException si algún item no tiene stock.
-    // Solo conoce el producto_id (su dominio no incluye nombres, eso vive en Node) —
-    // aquí lo traducimos a nombre legible usando el catálogo ya cargado en el cliente.
     let mensaje = err.response?.data?.message || 'Error al registrar la venta.'
     for (const p of productos.value) {
       if (mensaje.includes(p._id)) {
@@ -140,14 +132,10 @@ function totalUnidades(venta) {
   return venta.detalles?.reduce((acc, d) => acc + d.cantidad, 0) || 0
 }
 
-// Ej: "Producto de prueba Atlas x5, Otro producto x2"
 function resumenProductos(venta) {
   if (!venta.detalles?.length) return '—'
   return venta.detalles
-    .map((d) => {
-      const nombre = nombrePorProductoId.value[d.producto_id] || d.producto_id
-      return `${nombre} x${d.cantidad}`
-    })
+    .map((d) => `${nombrePorProductoId.value[d.producto_id] || d.producto_id} x${d.cantidad}`)
     .join(', ')
 }
 
@@ -155,82 +143,89 @@ onMounted(cargarTodo)
 </script>
 
 <template>
-  <div style="font-family: sans-serif; padding: 24px; max-width: 950px; margin: 0 auto;">
-    <h1>Ventas</h1>
-    <p v-if="errorMsg" style="color: red;">{{ errorMsg }}</p>
-    <p v-if="successMsg" style="color: green;">{{ successMsg }}</p>
+  <AppLayout>
+    <div class="page-header">
+      <h1>Ventas</h1>
+      <p style="color: var(--ink-muted);">Backend Laravel — transacción atómica con validación de stock</p>
+    </div>
+    <p v-if="errorMsg" class="alert alert-danger">{{ errorMsg }}</p>
+    <p v-if="successMsg" class="alert alert-success">{{ successMsg }}</p>
 
-    <h2>Nueva venta</h2>
-    <div style="margin-bottom: 12px;">
-      <label>Cliente: </label>
-      <select v-model="clienteSeleccionado">
-        <option value="">Público general</option>
-        <option v-for="c in clientes" :key="c.id" :value="c.id">{{ c.nombre }}</option>
-      </select>
+    <div class="card">
+      <h2>Nueva venta</h2>
+      <div class="form-row" style="margin-bottom: 8px;">
+        <label style="align-self: center; font-size: 14px; color: var(--ink-muted);">Cliente</label>
+        <select v-model="clienteSeleccionado">
+          <option value="">Público general</option>
+          <option v-for="c in clientes" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <select v-model="productoParaAgregar">
+          <option value="" disabled>Selecciona un producto</option>
+          <option v-for="p in productos" :key="p._id" :value="p._id">
+            {{ p.nombre }} — ${{ p.precio }} (stock: {{ stockPorProducto[p._id] ?? 0 }})
+          </option>
+        </select>
+        <input v-model.number="cantidadParaAgregar" type="number" min="1" style="width: 70px;" />
+        <button type="button" class="btn" @click="agregarAlCarrito">Agregar al carrito</button>
+      </div>
+
+      <table v-if="carrito.length" style="margin-top: 12px; margin-bottom: 12px;">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Precio unitario</th>
+            <th>Subtotal</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in carrito" :key="item.producto_id">
+            <td>{{ item.nombre }}</td>
+            <td>{{ item.cantidad }}</td>
+            <td>${{ item.precio_unitario }}</td>
+            <td>${{ (item.cantidad * item.precio_unitario).toFixed(2) }}</td>
+            <td><button type="button" class="btn" @click="quitarDelCarrito(item.producto_id)">Quitar</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-if="carrito.length" style="font-family: var(--font-display); font-weight: 600;">
+        Total: ${{ totalCarrito.toFixed(2) }}
+      </p>
+
+      <button type="button" class="btn btn-primary" :disabled="carrito.length === 0" @click="confirmarVenta">
+        Confirmar venta
+      </button>
     </div>
 
-    <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
-      <select v-model="productoParaAgregar">
-        <option value="" disabled>Selecciona un producto</option>
-        <option v-for="p in productos" :key="p._id" :value="p._id">
-          {{ p.nombre }} — ${{ p.precio }} (stock: {{ stockPorProducto[p._id] ?? 0 }})
-        </option>
-      </select>
-      <input v-model.number="cantidadParaAgregar" type="number" min="1" style="width: 70px;" />
-      <button type="button" @click="agregarAlCarrito">Agregar al carrito</button>
+    <div class="card">
+      <h2>Historial de ventas</h2>
+      <p v-if="loading">Cargando...</p>
+      <table v-else>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Productos vendidos</th>
+            <th>Unidades totales</th>
+            <th>Total</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="v in ventas" :key="v.id">
+            <td>{{ v.fecha }}</td>
+            <td>{{ nombreCliente(v.cliente) }}</td>
+            <td>{{ resumenProductos(v) }}</td>
+            <td>{{ totalUnidades(v) }}</td>
+            <td>${{ v.total }}</td>
+            <td><button type="button" class="btn" @click="cancelarVenta(v.id)">Cancelar</button></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-
-    <table v-if="carrito.length" border="1" cellpadding="8" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
-      <thead>
-        <tr>
-          <th>Producto</th>
-          <th>Cantidad</th>
-          <th>Precio unitario</th>
-          <th>Subtotal</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in carrito" :key="item.producto_id">
-          <td>{{ item.nombre }}</td>
-          <td>{{ item.cantidad }}</td>
-          <td>${{ item.precio_unitario }}</td>
-          <td>${{ (item.cantidad * item.precio_unitario).toFixed(2) }}</td>
-          <td><button type="button" @click="quitarDelCarrito(item.producto_id)">Quitar</button></td>
-        </tr>
-      </tbody>
-    </table>
-    <p v-if="carrito.length"><strong>Total: ${{ totalCarrito.toFixed(2) }}</strong></p>
-
-    <button type="button" :disabled="carrito.length === 0" @click="confirmarVenta">
-      Confirmar venta
-    </button>
-
-    <hr style="margin: 32px 0;" />
-
-    <h2>Historial de ventas</h2>
-    <p v-if="loading">Cargando...</p>
-    <table v-else border="1" cellpadding="8" style="width: 100%; border-collapse: collapse;">
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Cliente</th>
-          <th>Productos vendidos</th>
-          <th>Unidades totales</th>
-          <th>Total</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="v in ventas" :key="v.id">
-          <td>{{ v.fecha }}</td>
-          <td>{{ nombreCliente(v.cliente) }}</td>
-          <td>{{ resumenProductos(v) }}</td>
-          <td>{{ totalUnidades(v) }}</td>
-          <td>${{ v.total }}</td>
-          <td><button type="button" @click="cancelarVenta(v.id)">Cancelar</button></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  </AppLayout>
 </template>

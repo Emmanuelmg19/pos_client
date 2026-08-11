@@ -1,16 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { clienteRepository } from '../repositories/clienteRepository'
+import AppLayout from '../layouts/AppLayout.vue'
 
 const clientes = ref([])
 const loading = ref(false)
 const errorMsg = ref('')
 
-const form = ref({
-  nombre: '',
-  telefono: '',
-  email: '',
-})
+const form = ref({ nombre: '', telefono: '', email: '' })
 const editingId = ref(null)
 
 async function cargarClientes() {
@@ -70,39 +67,47 @@ onMounted(cargarClientes)
 </script>
 
 <template>
-  <div style="font-family: sans-serif; padding: 24px; max-width: 800px; margin: 0 auto;">
-    <h1>Clientes</h1>
-    <p v-if="errorMsg" style="color: red;">{{ errorMsg }}</p>
+  <AppLayout>
+    <div class="page-header">
+      <h1>Clientes</h1>
+      <p style="color: var(--ink-muted);">Backend Laravel / PostgreSQL</p>
+    </div>
+    <p v-if="errorMsg" class="alert alert-danger">{{ errorMsg }}</p>
 
-    <form @submit.prevent="guardar" style="margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap;">
-      <input v-model="form.nombre" placeholder="Nombre" required />
-      <input v-model="form.telefono" placeholder="Teléfono (opcional)" />
-      <input v-model="form.email" type="email" placeholder="Email (opcional)" />
-      <button type="submit">{{ editingId ? 'Actualizar' : 'Crear' }}</button>
-      <button v-if="editingId" type="button" @click="resetForm">Cancelar</button>
-    </form>
+    <div class="card">
+      <h2>{{ editingId ? 'Editar cliente' : 'Nuevo cliente' }}</h2>
+      <form @submit.prevent="guardar" class="form-row">
+        <input v-model="form.nombre" placeholder="Nombre" required />
+        <input v-model="form.telefono" placeholder="Teléfono (opcional)" />
+        <input v-model="form.email" type="email" placeholder="Email (opcional)" />
+        <button type="submit" class="btn btn-primary">{{ editingId ? 'Actualizar' : 'Crear' }}</button>
+        <button v-if="editingId" type="button" class="btn" @click="resetForm">Cancelar</button>
+      </form>
+    </div>
 
-    <p v-if="loading">Cargando...</p>
-    <table v-else border="1" cellpadding="8" style="width: 100%; border-collapse: collapse;">
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Teléfono</th>
-          <th>Email</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="c in clientes" :key="c.id">
-          <td>{{ c.nombre }}</td>
-          <td>{{ c.telefono || '—' }}</td>
-          <td>{{ c.email || '—' }}</td>
-          <td>
-            <button @click="editar(c)">Editar</button>
-            <button @click="eliminar(c.id)">Eliminar</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <div class="card">
+      <p v-if="loading">Cargando...</p>
+      <table v-else>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Teléfono</th>
+            <th>Email</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="c in clientes" :key="c.id">
+            <td>{{ c.nombre }}</td>
+            <td>{{ c.telefono || '—' }}</td>
+            <td>{{ c.email || '—' }}</td>
+            <td>
+              <button class="btn" @click="editar(c)">Editar</button>
+              <button class="btn" @click="eliminar(c.id)">Eliminar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </AppLayout>
 </template>
