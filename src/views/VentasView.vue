@@ -27,6 +27,14 @@ const stockPorProducto = computed(() => {
   return mapa
 })
 
+const nombrePorProductoId = computed(() => {
+  const mapa = {}
+  for (const p of productos.value) {
+    mapa[p._id] = p.nombre
+  }
+  return mapa
+})
+
 const totalCarrito = computed(() =>
   carrito.value.reduce((acc, item) => acc + item.cantidad * item.precio_unitario, 0)
 )
@@ -132,11 +140,22 @@ function totalUnidades(venta) {
   return venta.detalles?.reduce((acc, d) => acc + d.cantidad, 0) || 0
 }
 
+// Ej: "Producto de prueba Atlas x5, Otro producto x2"
+function resumenProductos(venta) {
+  if (!venta.detalles?.length) return '—'
+  return venta.detalles
+    .map((d) => {
+      const nombre = nombrePorProductoId.value[d.producto_id] || d.producto_id
+      return `${nombre} x${d.cantidad}`
+    })
+    .join(', ')
+}
+
 onMounted(cargarTodo)
 </script>
 
 <template>
-  <div style="font-family: sans-serif; padding: 24px; max-width: 900px; margin: 0 auto;">
+  <div style="font-family: sans-serif; padding: 24px; max-width: 950px; margin: 0 auto;">
     <h1>Ventas</h1>
     <p v-if="errorMsg" style="color: red;">{{ errorMsg }}</p>
     <p v-if="successMsg" style="color: green;">{{ successMsg }}</p>
@@ -196,8 +215,9 @@ onMounted(cargarTodo)
         <tr>
           <th>Fecha</th>
           <th>Cliente</th>
-          <th>Total</th>
+          <th>Productos vendidos</th>
           <th>Unidades totales</th>
+          <th>Total</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -205,8 +225,9 @@ onMounted(cargarTodo)
         <tr v-for="v in ventas" :key="v.id">
           <td>{{ v.fecha }}</td>
           <td>{{ nombreCliente(v.cliente) }}</td>
-          <td>${{ v.total }}</td>
+          <td>{{ resumenProductos(v) }}</td>
           <td>{{ totalUnidades(v) }}</td>
+          <td>${{ v.total }}</td>
           <td><button type="button" @click="cancelarVenta(v.id)">Cancelar</button></td>
         </tr>
       </tbody>
