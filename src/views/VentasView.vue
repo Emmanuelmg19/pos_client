@@ -20,6 +20,11 @@ const productoParaAgregar = ref('')
 const cantidadParaAgregar = ref(1)
 const busqueda = ref('')
 
+// --- Autocompletar de producto en "Nueva venta" ---
+const busquedaProducto = ref('')
+const mostrarSugerencias = ref(false)
+const LIMITE_SUGERENCIAS = 20
+
 const stockPorProducto = computed(() => {
   const mapa = {}
   for (const inv of inventario.value) mapa[inv.producto_id] = inv.cantidad_disponible
@@ -30,6 +35,14 @@ const nombrePorProductoId = computed(() => {
   const mapa = {}
   for (const p of productos.value) mapa[p._id] = p.nombre
   return mapa
+})
+
+const productosSugeridos = computed(() => {
+  const termino = busquedaProducto.value.trim().toLowerCase()
+  const lista = termino
+    ? productos.value.filter((p) => p.nombre?.toLowerCase().includes(termino))
+    : productos.value
+  return lista.slice(0, LIMITE_SUGERENCIAS)
 })
 
 const totalCarrito = computed(() =>
@@ -68,6 +81,19 @@ async function cargarTodo() {
   }
 }
 
+function seleccionarProducto(producto) {
+  productoParaAgregar.value = producto._id
+  busquedaProducto.value = producto.nombre
+  mostrarSugerencias.value = false
+}
+
+function ocultarSugerenciasConRetraso() {
+  // pequeño retraso para que el @mousedown.prevent de la sugerencia alcance a registrarse
+  setTimeout(() => {
+    mostrarSugerencias.value = false
+  }, 150)
+}
+
 function agregarAlCarrito() {
   if (!productoParaAgregar.value || cantidadParaAgregar.value < 1) return
   const producto = productos.value.find((p) => p._id === productoParaAgregar.value)
@@ -84,6 +110,7 @@ function agregarAlCarrito() {
     })
   }
   productoParaAgregar.value = ''
+  busquedaProducto.value = ''
   cantidadParaAgregar.value = 1
 }
 
@@ -173,15 +200,38 @@ onMounted(cargarTodo)
       </div>
 
       <div class="form-row">
-        <select v-model="productoParaAgregar">
-          <option value="" disabled>Selecciona un producto</option>
-          <option v-for="p in productos" :key="p._id" :value="p._id">
-            {{ p.nombre }} — ${{ p.precio }} (stock: {{ stockPorProducto[p._id] ?? 0 }})
-          </option>
-        </select>
+        <div class="autocomplete-wrapper">
+          <input
+            v-model="busquedaProducto"
+            type="text"
+            placeholder="Buscar producto por nombre..."
+            autocomplete="off"
+            @focus="mostrarSugerencias = true"
+            @blur="ocultarSugerenciasConRetraso"
+            style="width: 100%;"
+          />
+          <ul v-if="mostrarSugerencias && productosSugeridos.length" class="autocomplete-list">
+            <li
+              v-for="p in productosSugeridos"
+              :key="p._id"
+              @mousedown.prevent="seleccionarProducto(p)"
+            >
+              {{ p.nombre }} — ${{ p.precio }}
+              <span class="autocomplete-stock">(stock: {{ stockPorProducto[p._id] ?? 0 }})</span>
+            </li>
+          </ul>
+          <p v-if="mostrarSugerencias && busquedaProducto && productosSugeridos.length === 0" class="autocomplete-empty">
+            Sin coincidencias.
+          </p>
+        </div>
         <input v-model.number="cantidadParaAgregar" type="number" min="1" style="width: 70px;" />
-        <button type="button" class="btn" @click="agregarAlCarrito">Agregar al carrito</button>
+        <button type="button" class="btn" :disabled="!productoParaAgregar" @click="agregarAlCarrito">
+          Agregar al carrito
+        </button>
       </div>
+      <p v-if="productoParaAgregar" style="font-size: 13px; color: var(--ink-muted); margin-top: 4px;">
+        Seleccionado: {{ nombrePorProductoId[productoParaAgregar] }} (stock: {{ stockPorProducto[productoParaAgregar] ?? 0 }})
+      </p>
 
       <table v-if="carrito.length" style="margin-top: 12px; margin-bottom: 12px;">
         <thead>
@@ -255,3 +305,49 @@ onMounted(cargarTodo)
     </div>
   </AppLayout>
 </template>
+
+<style scoped>
+.autocomplete-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+}
+.autocomplete-list {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+.autocomplete-list li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1b2430;
+}
+.autocomplete-list li:hover {
+  background: #f2f2f2;
+}
+.autocomplete-stock {
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+.autocomplete-empty {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+</style>
