@@ -16,6 +16,7 @@ async function handleLogout() {
     <h1>Dashboard POS AOS</h1>
     <p>Bienvenido, sesión iniciada correctamente.</p>
     <router-link to="/productos">Ver Productos</router-link>
+    <router-link to="/inventario">Ver Inventario</router-link>
     <button @click="handleLogout">Cerrar sesión</button>
   </div>
 </template>
