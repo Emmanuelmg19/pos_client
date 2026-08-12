@@ -2,24 +2,24 @@
 import { ref, onMounted, computed } from 'vue'
 import { inventarioRepository } from '../repositories/inventarioRepository'
 import { productoRepository } from '../repositories/productoRepository'
+import { useAuthStore } from '../stores/auth'
 import AppLayout from '../layouts/AppLayout.vue'
+
+const authStore = useAuthStore()
 
 const inventario = ref([])
 const productos = ref([])
 const loading = ref(false)
 const errorMsg = ref('')
-
 const form = ref({ producto_id: '', cantidad_disponible: null, ubicacion: '' })
 const editingId = ref(null)
 const ajusteCantidad = ref({})
 const busqueda = ref('')
-
 const productoNombrePorId = computed(() => {
   const mapa = {}
   for (const p of productos.value) mapa[p._id] = p.nombre
   return mapa
 })
-
 const inventarioFiltrado = computed(() => {
   const termino = busqueda.value.trim().toLowerCase()
   if (!termino) return inventario.value
@@ -29,7 +29,6 @@ const inventarioFiltrado = computed(() => {
     return nombre.includes(termino) || ubicacion.includes(termino)
   })
 })
-
 async function cargarTodo() {
   loading.value = true
   errorMsg.value = ''
@@ -44,7 +43,6 @@ async function cargarTodo() {
     loading.value = false
   }
 }
-
 async function guardar() {
   try {
     if (editingId.value) {
@@ -59,7 +57,6 @@ async function guardar() {
     console.error(err)
   }
 }
-
 function editar(item) {
   editingId.value = item.id
   form.value = {
@@ -68,7 +65,6 @@ function editar(item) {
     ubicacion: item.ubicacion || '',
   }
 }
-
 async function eliminar(id) {
   if (!confirm('¿Eliminar este registro de inventario?')) return
   try {
@@ -79,7 +75,6 @@ async function eliminar(id) {
     console.error(err)
   }
 }
-
 async function ajustar(id) {
   const cantidad = Number(ajusteCantidad.value[id])
   if (!cantidad) return
@@ -92,15 +87,12 @@ async function ajustar(id) {
     console.error(err)
   }
 }
-
 function resetForm() {
   editingId.value = null
   form.value = { producto_id: '', cantidad_disponible: null, ubicacion: '' }
 }
-
 onMounted(cargarTodo)
 </script>
-
 <template>
   <AppLayout>
     <div class="page-header">
@@ -108,8 +100,7 @@ onMounted(cargarTodo)
       <p style="color: var(--ink-muted);">Stock por producto — Backend Laravel / PostgreSQL</p>
     </div>
     <p v-if="errorMsg" class="alert alert-danger">{{ errorMsg }}</p>
-
-    <div class="card">
+    <div class="card" v-if="authStore.isAdmin">
       <h2>{{ editingId ? 'Editar registro' : 'Nuevo registro' }}</h2>
       <form @submit.prevent="guardar" class="form-row">
         <select v-model="form.producto_id" required>
@@ -122,7 +113,6 @@ onMounted(cargarTodo)
         <button v-if="editingId" type="button" class="btn" @click="resetForm">Cancelar</button>
       </form>
     </div>
-
     <div class="card">
       <div class="form-row" style="margin-bottom: 12px;">
         <input
@@ -135,7 +125,6 @@ onMounted(cargarTodo)
           {{ inventarioFiltrado.length }} de {{ inventario.length }} registros
         </span>
       </div>
-
       <p v-if="loading">Cargando...</p>
       <table v-else>
         <thead>
@@ -143,8 +132,8 @@ onMounted(cargarTodo)
             <th>Producto</th>
             <th>Stock disponible</th>
             <th>Ubicación</th>
-            <th>Ajustar stock</th>
-            <th>Acciones</th>
+            <th v-if="authStore.isAdmin">Ajustar stock</th>
+            <th v-if="authStore.isAdmin">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -152,17 +141,17 @@ onMounted(cargarTodo)
             <td>{{ productoNombrePorId[item.producto_id] || item.producto_id }}</td>
             <td>{{ item.cantidad_disponible }}</td>
             <td>{{ item.ubicacion || '—' }}</td>
-            <td>
+            <td v-if="authStore.isAdmin">
               <input v-model="ajusteCantidad[item.id]" type="number" placeholder="+5 / -3" style="width: 70px;" />
               <button class="btn" @click="ajustar(item.id)">Aplicar</button>
             </td>
-            <td>
+            <td v-if="authStore.isAdmin">
               <button class="btn" @click="editar(item)">Editar</button>
               <button class="btn" @click="eliminar(item.id)">Eliminar</button>
             </td>
           </tr>
           <tr v-if="inventarioFiltrado.length === 0">
-            <td colspan="5" style="text-align: center; color: var(--ink-muted);">No hay registros que coincidan con la búsqueda.</td>
+            <td :colspan="authStore.isAdmin ? 5 : 3" style="text-align: center; color: var(--ink-muted);">No hay registros que coincidan con la búsqueda.</td>
           </tr>
         </tbody>
       </table>

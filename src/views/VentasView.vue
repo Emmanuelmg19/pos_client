@@ -4,8 +4,10 @@ import { ventaRepository } from '../repositories/ventaRepository'
 import { clienteRepository } from '../repositories/clienteRepository'
 import { productoRepository } from '../repositories/productoRepository'
 import { inventarioRepository } from '../repositories/inventarioRepository'
+import { useAuthStore } from '../stores/auth'
 import AppLayout from '../layouts/AppLayout.vue'
 
+const authStore = useAuthStore()
 const ventas = ref([])
 const clientes = ref([])
 const productos = ref([])
@@ -295,7 +297,7 @@ onMounted(cargarTodo)
             <td>{{ resumenProductos(v) }}</td>
             <td>{{ totalUnidades(v) }}</td>
             <td>${{ v.total }}</td>
-            <td><button type="button" class="btn" @click="cancelarVenta(v.id)">Cancelar</button></td>
+            <td><button v-if="authStore.isAdmin" type="button" class="btn" @click="cancelarVenta(v.id)">Cancelar</button></td>
           </tr>
           <tr v-if="ventasFiltradas.length === 0">
             <td colspan="6" style="text-align: center; color: var(--ink-muted);">No hay ventas que coincidan con la búsqueda.</td>

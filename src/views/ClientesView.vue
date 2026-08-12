@@ -1,7 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { clienteRepository } from '../repositories/clienteRepository'
+import { useAuthStore } from '../stores/auth'
 import AppLayout from '../layouts/AppLayout.vue'
+
+const authStore = useAuthStore()
 
 const clientes = ref([])
 const loading = ref(false)
@@ -126,7 +129,7 @@ onMounted(cargarClientes)
             <td>{{ c.email || '—' }}</td>
             <td>
               <button class="btn" @click="editar(c)">Editar</button>
-              <button class="btn" @click="eliminar(c.id)">Eliminar</button>
+              <button v-if="authStore.isAdmin" class="btn" @click="eliminar(c.id)">Eliminar</button>
             </td>
           </tr>
           <tr v-if="clientesFiltrados.length === 0">
